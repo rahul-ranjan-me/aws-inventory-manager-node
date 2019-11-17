@@ -24,10 +24,11 @@ router.post('/register', (req, res) => {
         },
         FilterExpression: 'contains (username, :username)',
     };
-
+console.log(req.body.admin)
     // Call DynamoDB to read the item from the table
     ddb.scan(params, function(err, data) {
-        console.log(data.Items)
+        console.log("Changes applied")
+        console.log(data)
         if(!data.items){
             res.send({"status": "error", "message": "Username already taken"})
             return;

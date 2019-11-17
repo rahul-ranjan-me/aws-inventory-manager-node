@@ -143,7 +143,8 @@ router.post('/login', (req, res, next) => {
                 gender: user.gender.S,
                 location: user.location.S,
                 mobile: user.mobile.N,
-                username: user.username.S
+                username: user.username.S,
+                profilePic: user.profilePic.S
             }
         });
     });

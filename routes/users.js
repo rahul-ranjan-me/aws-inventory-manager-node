@@ -144,7 +144,7 @@ router.post('/login', (req, res, next) => {
                 location: user.location.S,
                 mobile: user.mobile.N,
                 username: user.username.S,
-                profilePic: user.profilePic.S
+                profilePic: user.profilePic ? user.profilePic.S : ''
             }
         });
     });

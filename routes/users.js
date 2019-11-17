@@ -1,6 +1,9 @@
 const express = require('express')
 ,   fileUpload = require('express-fileupload')
+,   formidable = require('formidable')
+,   util = require('util')
 ,   router = express.Router()
+,   fs = require('fs')
 ,   Verify = require('./verify')
 ,   config = require('../config')
 ,   bcrypt = require('bcryptjs')
@@ -9,6 +12,8 @@ const express = require('express')
 
 AWS.config.update({region: 'us-east-1'})
 const ddb = new AWS.DynamoDB({apiVersion: '2012-08-10'})
+const s3 = new AWS.S3();
+const s3Stream = require('s3-upload-stream')(s3)
 var docClient = new AWS.DynamoDB.DocumentClient()
 
 router.get('/', function(req, res, next) {
@@ -16,52 +21,80 @@ router.get('/', function(req, res, next) {
 });
 
 router.post('/register', (req, res) => {
-    req.body.admin = req.body.admin == 'true' ? true : false;
-    var params = {
-        TableName: tableName,
-        ExpressionAttributeValues: {
-            ':username': {S: req.body.username}
-        },
-        FilterExpression: 'contains (username, :username)',
-    };
+    var form = new formidable.IncomingForm()
+    , buffer=null, ext, fields;
 
-    // Call DynamoDB to read the item from the table
-    ddb.scan(params, function(err, data) {
-        if(data.items && data.items.length > 0){
-            res.send({"status": "error", "message": "Username already taken"})
+    form.on('file', (field, file) => {
+        fileName = file.name;
+        buffer = fs.readFileSync(file.path);
+        ext = fileName.substring(fileName.lastIndexOf('.'), fileName.length)
+    });
+
+    form.parse(req, function(err, fields, files) {
+        if (err) {
+            console.error(err.message);
             return;
         }
-
-        var salt = bcrypt.genSaltSync(10)
-        ,   hash = bcrypt.hashSync("B4c0/\/", salt);
         
-        var params = {
-            TableName: tableName,
-            Item: {
-                'USER_ID' : {S: req.body.userId},
-                'username' : {S: req.body.username},
-                'admin': {BOOL: req.body.admin},
-                'firstName' : {S: req.body.firstName},
-                'lastName' : {S: req.body.lastName},
-                'birthMonth' : {S: req.body.birthMonth},
-                'birthDay' : {N: req.body.birthDay},
-                'birthYear' : {N: req.body.birthYear},
-                'gender' : {S: req.body.gender},
-                'mobile' : {S: req.body.mobile},
-                'email' : {S: req.body.email},
-                'location' : {S: req.body.location},
-                'password' : {S: hash}
-            }
+        const S3Params = {
+            Bucket: "aws-inventory-manager-node",
+            Key: (Math.floor(Math.random() * 1000000000)).toString()+ext,
+            Body: buffer
         };
-        // Call DynamoDB to add the item to the table
-        ddb.putItem(params, function(err, data) {
-            if (err) {
-                res.send({"status": "Error", "error": err});
-            } else {
-                res.send({"status": "Success", "error": err});
-            }
+    
+        s3.upload(S3Params, function(err, uploadFile) {
+            if (err) { throw err; }
+            fields.admin = fields.admin == 'true' ? true : false;
+            var params = {
+                TableName: tableName,
+                ExpressionAttributeValues: {
+                    ':username': {S: fields.username}
+                },
+                FilterExpression: 'contains (username, :username)',
+            };
+        
+            // Call DynamoDB to read the item from the table
+            ddb.scan(params, function(err, data) {
+                if(data.items && data.items.length > 0){
+                    res.send({"status": "error", "message": "Username already taken"})
+                    return;
+                }
+        
+                var salt = bcrypt.genSaltSync(10)
+                ,   hash = bcrypt.hashSync("B4c0/\/", salt);
+                
+                var params = {
+                    TableName: tableName,
+                    Item: {
+                        'USER_ID' : {S: (Math.floor(Math.random() * 1000000000)).toString()},
+                        'username' : {S: fields.username},
+                        'admin': {BOOL: fields.admin},
+                        'firstName' : {S: fields.firstName},
+                        'lastName' : {S: fields.lastName},
+                        'birthMonth' : {S: fields.birthMonth},
+                        'birthDay' : {N: fields.birthDay},
+                        'birthYear' : {N: fields.birthYear},
+                        'gender' : {S: fields.gender},
+                        'mobile' : {S: fields.mobile},
+                        'email' : {S: fields.email},
+                        'location' : {S: fields.location},
+                        'password' : {S: hash},
+                        'profilePic': {S: uploadFile.Location}
+                    }
+                };
+                // Call DynamoDB to add the item to the table
+                ddb.putItem(params, function(err, data) {
+                    if (err) {
+                        res.send({"status": "Error", "error": err});
+                    } else {
+                        res.send({"status": "Registration Successful!", "error": err});
+                    }
+                });
+            })
         });
-    })
+        
+    });
+
 });
 
 router.post('/login', (req, res, next) => {

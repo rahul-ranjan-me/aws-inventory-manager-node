@@ -1,0 +1,24 @@
+<!-- The core Firebase JS SDK is always required and must be listed first -->
+<script src="https://www.gstatic.com/firebasejs/7.4.0/firebase-app.js"></script>
+
+<!-- TODO: Add SDKs for Firebase products that you want to use
+     https://firebase.google.com/docs/web/setup#available-libraries -->
+<script src="https://www.gstatic.com/firebasejs/7.4.0/firebase-analytics.js"></script>
+
+<script>
+  // Your web app's Firebase configuration
+  var firebaseConfig = {
+    apiKey: "AIzaSyD1HN1cjXQ8wajpWA4Vjp60ywdMLCSzI2c",
+    authDomain: "notifyme-fac6b.firebaseapp.com",
+    databaseURL: "https://notifyme-fac6b.firebaseio.com",
+    projectId: "notifyme-fac6b",
+    storageBucket: "notifyme-fac6b.appspot.com",
+    messagingSenderId: "345877375785",
+    appId: "1:345877375785:web:a23789f4f47f64cb86e538",
+    measurementId: "G-2YNB55P7M8"
+  };
+  // Initialize Firebase
+  firebase.initializeApp(firebaseConfig);
+  firebase.analytics();
+</script>
+

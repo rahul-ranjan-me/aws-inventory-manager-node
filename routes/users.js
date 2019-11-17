@@ -28,7 +28,7 @@ router.post('/register', (req, res) => {
     // Call DynamoDB to read the item from the table
     ddb.scan(params, function(err, data) {
         console.log(data.Items)
-        if(!data.items || data.Items.length > 0){
+        if(!data.items){
             res.send({"status": "error", "message": "Username already taken"})
             return;
         }

@@ -3,7 +3,7 @@ const express = require('express')
 ,   router = express.Router()
 ,   Verify = require('./verify')
 ,   config = require('../config')
-,   bcrypt = require('bcrypt')
+,   bcrypt = require('bcryptjs')
 ,   AWS = require('aws-sdk')
 ,   tableName = "USER_TABLE"
 
@@ -30,34 +30,35 @@ router.post('/register', (req, res) => {
         if(data.Items.length > 0){
             res.send({"status": "error", "message": "Username already taken"})
         }
-    
-        bcrypt.hash(req.body.password, 10, function(err, hash) {
-            var params = {
-                TableName: tableName,
-                Item: {
-                    'USER_ID' : {S: req.body.userId},
-                    'username' : {S: req.body.username},
-                    'admin': {BOOL: req.body.admin},
-                    'firstName' : {S: req.body.firstName},
-                    'lastName' : {S: req.body.lastName},
-                    'birthMonth' : {S: req.body.birthMonth},
-                    'birthDay' : {N: req.body.birthDay},
-                    'birthYear' : {N: req.body.birthYear},
-                    'gender' : {S: req.body.gender},
-                    'mobile' : {S: req.body.mobile},
-                    'email' : {S: req.body.email},
-                    'location' : {S: req.body.location},
-                    'password' : {S: hash}
-                }
-            };
-            // Call DynamoDB to add the item to the table
-            ddb.putItem(params, function(err, data) {
-                if (err) {
-                    res.send({"status": "Error", "error": err});
-                } else {
-                    res.send({"status": "Success", "error": err});
-                }
-            });
+
+        var salt = bcrypt.genSaltSync(10)
+        ,   hash = bcrypt.hashSync("B4c0/\/", salt);
+        
+        var params = {
+            TableName: tableName,
+            Item: {
+                'USER_ID' : {S: req.body.userId},
+                'username' : {S: req.body.username},
+                'admin': {BOOL: req.body.admin},
+                'firstName' : {S: req.body.firstName},
+                'lastName' : {S: req.body.lastName},
+                'birthMonth' : {S: req.body.birthMonth},
+                'birthDay' : {N: req.body.birthDay},
+                'birthYear' : {N: req.body.birthYear},
+                'gender' : {S: req.body.gender},
+                'mobile' : {S: req.body.mobile},
+                'email' : {S: req.body.email},
+                'location' : {S: req.body.location},
+                'password' : {S: hash}
+            }
+        };
+        // Call DynamoDB to add the item to the table
+        ddb.putItem(params, function(err, data) {
+            if (err) {
+                res.send({"status": "Error", "error": err});
+            } else {
+                res.send({"status": "Success", "error": err});
+            }
         });
     })
 });
@@ -82,33 +83,32 @@ router.post('/login', (req, res, next) => {
             return;
         }
         
-        bcrypt.compare(req.body.password, user.password.S, function(err, response) {
-            console.log(response)
-            if(!response) {
-                res.status(401).json({"success": false, status:"Incorrect password", error: err})
-                return;
-            }
-            var token = Verify.getToken(user);
-            res.status(200).json({
-                status: 'Login Successful!',
-                success: true,
-                token: token,
+        var isUserValid = bcrypt.compare(req.body.password, user.password.S)
+            
+        if(!isUserValid) {
+            res.status(401).json({"success": false, status:"Incorrect password", error: err})
+            return;
+        }
+        var token = Verify.getToken(user);
+        res.status(200).json({
+            status: 'Login Successful!',
+            success: true,
+            token: token,
+            id: user.USER_ID.S,
+            userDetails: {
                 id: user.USER_ID.S,
-                userDetails: {
-                    id: user.USER_ID.S,
-                    admin: user.admin && user.admin.BOOL ? user.admin.BOOL : false,
-                    birthDay: user.birthDay.N,
-                    birthMonth: user.birthMonth.S,
-                    birthYear: user.birthYear.N,
-                    email: user.email.S,
-                    firstName: user.firstName.S,
-                    lastName: user.lastName.S,
-                    gender: user.gender.S,
-                    location: user.location.S,
-                    mobile: user.mobile.N,
-                    username: user.username.S
-                }
-            })
+                admin: user.admin && user.admin.BOOL ? user.admin.BOOL : false,
+                birthDay: user.birthDay.N,
+                birthMonth: user.birthMonth.S,
+                birthYear: user.birthYear.N,
+                email: user.email.S,
+                firstName: user.firstName.S,
+                lastName: user.lastName.S,
+                gender: user.gender.S,
+                location: user.location.S,
+                mobile: user.mobile.N,
+                username: user.username.S
+            }
         });
     });
 });

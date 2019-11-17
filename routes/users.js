@@ -27,8 +27,10 @@ router.post('/register', (req, res) => {
 
     // Call DynamoDB to read the item from the table
     ddb.scan(params, function(err, data) {
-        if(data.Items.length > 0){
+        console.log(data.Items)
+        if(!data.items || data.Items.length > 0){
             res.send({"status": "error", "message": "Username already taken"})
+            return;
         }
 
         var salt = bcrypt.genSaltSync(10)

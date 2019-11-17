@@ -111,10 +111,7 @@ router.post('/login', (req, res, next) => {
         if (err) {
             res.status(401).json({"success": false, status:"Error", error: err})
             return;
-        } else if (!user){
-            res.status(401).json({"success": false, status:"User not found", error: err})
-            return;
-        }
+        } 
         let user;
         if(data && data.Items && data.Items[0]) {
             user = data.Items[0] 

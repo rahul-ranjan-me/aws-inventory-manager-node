@@ -108,7 +108,6 @@ router.post('/login', (req, res, next) => {
 
     // Call DynamoDB to read the item from the table
     ddb.scan(params, function(err, data) {
-        const user = data.Items[0]
         if (err) {
             res.status(401).json({"success": false, status:"Error", error: err})
             return;
@@ -116,7 +115,13 @@ router.post('/login', (req, res, next) => {
             res.status(401).json({"success": false, status:"User not found", error: err})
             return;
         }
-        
+        const user;
+        if(data && data.Items && data.Items[0]) {
+            user = data.Items[0] 
+        } else {
+            res.status(401).json({"success": false, status:"User not found", error: err})
+            return;
+        }
         var isUserValid = bcrypt.compare(req.body.password, user.password.S)
             
         if(!isUserValid) {
